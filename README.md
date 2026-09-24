@@ -66,6 +66,51 @@ $ sm2 -interval 15 -ease 2.5 -reps 3 -grade 5 -today 2026-01-23 -json
 }
 ```
 
+## Tracking many cards with a deck file
+
+Passing `-interval`, `-ease`, and `-reps` by hand works for one card, but
+falls apart once you're tracking more than a handful. Pass `-deck` and
+`-card` instead and `sm2` reads the card's state from the deck file,
+reviews it, and writes the new state back — so a wrapper script only
+needs to keep a card's name around, not its whole history:
+
+```
+$ sm2 -deck cards.json -card capital-of-france -grade 4 -today 2026-01-01
+interval: 1
+ease:     2.50
+reps:     1
+due:      2026-01-02
+```
+
+A card that isn't in the deck yet is treated as new (interval 0, ease
+2.5, reps 0) and added on the first review. Reviewing again later reads
+back the state this run just wrote:
+
+```
+$ sm2 -deck cards.json -card capital-of-france -grade 4 -today 2026-01-02
+interval: 6
+ease:     2.50
+reps:     2
+due:      2026-01-08
+```
+
+The deck file itself is plain JSON, one entry per card, safe to inspect
+or edit by hand between runs:
+
+```json
+{
+  "capital-of-france": {
+    "interval": 6,
+    "ease": 2.5,
+    "reps": 2,
+    "due": "2026-01-08"
+  }
+}
+```
+
+`-interval`, `-ease`, and `-reps` are ignored when `-deck` is set; the
+deck file is the source of truth for a tracked card's state.
+
 ## The grade scale
 
 SM-2 uses a 0-5 quality score for how the review went:

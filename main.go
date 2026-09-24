@@ -1,8 +1,8 @@
 // Command sm2 computes the next SM-2 spaced repetition schedule for a
-// single flashcard given its current state and a review grade. It does
-// not manage a deck or a database; it is meant to be called from a
-// wrapper script that stores card state (e.g. one line per card in a
-// text file or a small JSON blob) and shells out here to advance it.
+// single flashcard given its current state and a review grade. State for
+// one card can be passed directly on the command line, or persisted
+// across runs in a deck file (see deck.go) so a wrapper script only has
+// to remember a card's name.
 package main
 
 import (
@@ -16,16 +16,23 @@ import (
 const dateLayout = "2006-01-02"
 
 func main() {
-	interval := flag.Int("interval", 0, "days since the card was last due (0 for a new card)")
-	ease := flag.Float64("ease", DefaultEase, "current ease factor (2.5 for a new card)")
-	reps := flag.Int("reps", 0, "consecutive successful reviews so far (0 for a new card)")
+	interval := flag.Int("interval", 0, "days since the card was last due (0 for a new card); ignored if -deck is set")
+	ease := flag.Float64("ease", DefaultEase, "current ease factor (2.5 for a new card); ignored if -deck is set")
+	reps := flag.Int("reps", 0, "consecutive successful reviews so far (0 for a new card); ignored if -deck is set")
 	grade := flag.Int("grade", -1, "review grade, 0-5 (required; 0 = blackout, 3 = pass, 5 = perfect)")
 	today := flag.String("today", "", "date the review happened, YYYY-MM-DD (default: today)")
 	asJSON := flag.Bool("json", false, "print the result as JSON instead of plain text")
+	deckPath := flag.String("deck", "", "deck file to load the card's state from and save its new state to")
+	cardName := flag.String("card", "", "name of the card within -deck (required if -deck is set)")
 	flag.Parse()
 
 	if *grade < 0 {
 		fmt.Fprintln(os.Stderr, "error: -grade is required (0-5)")
+		flag.Usage()
+		os.Exit(2)
+	}
+	if *deckPath != "" && *cardName == "" {
+		fmt.Fprintln(os.Stderr, "error: -card is required when -deck is set")
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -40,10 +47,35 @@ func main() {
 		reviewedOn = parsed
 	}
 
-	result, err := Review(Card{Interval: *interval, Ease: *ease, Reps: *reps}, *grade, reviewedOn)
+	prev := Card{Interval: *interval, Ease: *ease, Reps: *reps}
+
+	var deck Deck
+	if *deckPath != "" {
+		var err error
+		deck, err = LoadDeck(*deckPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if existing, ok := deck[*cardName]; ok {
+			prev = existing.Card
+		} else {
+			prev = Card{Interval: 0, Ease: DefaultEase, Reps: 0}
+		}
+	}
+
+	result, err := Review(prev, *grade, reviewedOn)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
+	}
+
+	if deck != nil {
+		deck[*cardName] = DeckCard{Card: result.Card, Due: result.Due}
+		if err := deck.Save(*deckPath); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if *asJSON {
