@@ -111,6 +111,37 @@ or edit by hand between runs:
 `-interval`, `-ease`, and `-reps` are ignored when `-deck` is set; the
 deck file is the source of truth for a tracked card's state.
 
+## Listing what's due
+
+Once a deck has more than a couple of cards in it, a wrapper script
+needs a way to ask "what should I review today?" instead of checking
+each card by name. The `due` subcommand answers that from a deck file,
+most overdue first:
+
+```
+$ sm2 due -deck cards.json -today 2026-01-09
+capital-of-france  due 2026-01-08
+capital-of-peru    due 2026-01-09
+```
+
+A card counts as due if its due date is today or earlier; `-today`
+defaults to the actual current date the same way it does for a review.
+Pass `-json` for a machine-readable list instead:
+
+```
+$ sm2 due -deck cards.json -today 2026-01-09 -json
+[
+  {
+    "name": "capital-of-france",
+    "due": "2026-01-08"
+  },
+  {
+    "name": "capital-of-peru",
+    "due": "2026-01-09"
+  }
+]
+```
+
 ## The grade scale
 
 SM-2 uses a 0-5 quality score for how the review went:

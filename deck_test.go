@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestLoadDeckMissingFile(t *testing.T) {
@@ -72,6 +73,42 @@ func TestDeckNamesSorted(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("Names() = %v, want %v", got, want)
 		}
+	}
+}
+
+func TestDeckDue(t *testing.T) {
+	deck := Deck{
+		"overdue-week": {Card: Card{Ease: DefaultEase}, Due: day(2026, 1, 1)},
+		"due-today-a":  {Card: Card{Ease: DefaultEase}, Due: day(2026, 1, 8)},
+		"due-today-b":  {Card: Card{Ease: DefaultEase}, Due: day(2026, 1, 8)},
+		"not-yet-due":  {Card: Card{Ease: DefaultEase}, Due: day(2026, 1, 9)},
+		"far-future":   {Card: Card{Ease: DefaultEase}, Due: day(2026, 6, 1)},
+	}
+
+	// asOf carries a time-of-day component to check that Due compares by
+	// calendar date only, not by exact instant.
+	asOf := day(2026, 1, 8).Add(18 * time.Hour)
+
+	want := []string{"overdue-week", "due-today-a", "due-today-b"}
+	got := deck.Due(asOf)
+	if len(got) != len(want) {
+		t.Fatalf("Due() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("Due() = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestDeckDueNoneReady(t *testing.T) {
+	deck := Deck{
+		"not-yet-due": {Card: Card{Ease: DefaultEase}, Due: day(2026, 1, 9)},
+	}
+
+	got := deck.Due(day(2026, 1, 8))
+	if len(got) != 0 {
+		t.Fatalf("Due() = %v, want empty", got)
 	}
 }
 

@@ -99,3 +99,22 @@ func (d Deck) Names() []string {
 	sort.Strings(names)
 	return names
 }
+
+// Due returns the names of cards whose due date falls on or before asOf,
+// with the most overdue cards first and ties broken alphabetically. asOf
+// is compared by calendar date, so a card due earlier today still counts
+// as due regardless of the current time of day.
+func (d Deck) Due(asOf time.Time) []string {
+	asOf = time.Date(asOf.Year(), asOf.Month(), asOf.Day(), 0, 0, 0, 0, time.UTC)
+
+	due := make([]string, 0, len(d))
+	for _, name := range d.Names() {
+		if !d[name].Due.After(asOf) {
+			due = append(due, name)
+		}
+	}
+	sort.SliceStable(due, func(i, j int) bool {
+		return d[due[i]].Due.Before(d[due[j]].Due)
+	})
+	return due
+}

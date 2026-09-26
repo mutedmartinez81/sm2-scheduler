@@ -2,7 +2,8 @@
 // single flashcard given its current state and a review grade. State for
 // one card can be passed directly on the command line, or persisted
 // across runs in a deck file (see deck.go) so a wrapper script only has
-// to remember a card's name.
+// to remember a card's name. The "due" subcommand (see due.go) lists
+// which cards in a deck are ready for review.
 package main
 
 import (
@@ -16,6 +17,11 @@ import (
 const dateLayout = "2006-01-02"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "due" {
+		runDue(os.Args[2:])
+		return
+	}
+
 	interval := flag.Int("interval", 0, "days since the card was last due (0 for a new card); ignored if -deck is set")
 	ease := flag.Float64("ease", DefaultEase, "current ease factor (2.5 for a new card); ignored if -deck is set")
 	reps := flag.Int("reps", 0, "consecutive successful reviews so far (0 for a new card); ignored if -deck is set")
